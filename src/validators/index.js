@@ -1,31 +1,37 @@
-import alpha from './alpha'
-import alphaNum from './alphaNum'
-import numeric from './numeric'
+import alpha, { alphaWithMessage } from './alpha'
+import alphaNum, { alphaNumWithMessage } from './alphaNum'
+import numeric, { numericWithMessage } from './numeric'
 import between from './between'
-import email from './email'
+import email, { emailWithMessage } from './email'
 import maxLength from './maxLength'
 import minLength from './minLength'
-import required from './required'
+import required, { requiredWithMessage } from './required'
 import requiredIf from './requiredIf'
 import requiredUnless from './requiredUnless'
 import sameAs from './sameAs'
-import url from './url'
+import url, { urlWithMessage } from './url'
 import or from './or'
 import and from './and'
 
 export {
   alpha,
+  alphaWithMessage,
   alphaNum,
+  alphaNumWithMessage,
   numeric,
+  numericWithMessage,
   between,
   email,
+  emailWithMessage,
   maxLength,
   minLength,
   required,
+  requiredWithMessage,
   requiredIf,
   requiredUnless,
   sameAs,
   url,
+  urlWithMessage,
   or,
   and
 }
