@@ -1,11 +1,11 @@
-import {h, patchChildren} from './vval'
+import { h, patchChildren } from './vval'
 
 const buildFromKeys = (keys, fn, keyFn) => keys.reduce((build, key) => {
   build[keyFn ? keyFn(key) : key] = fn(key)
   return build
 }, {})
 
-function isPromise (object) {
+function isPromise(object) {
   return (typeof object === 'object' || typeof object === 'function') && typeof object.then === 'function'
 }
 
@@ -26,10 +26,11 @@ const getPath = (ctx, obj, path, fallback) => {
   return typeof obj === 'undefined' ? fallback : obj
 }
 
-import {withParams, pushParams, popParams} from './params'
+import { withParams, pushParams, popParams } from './params'
 
 const __isVuelidateAsyncVm = '__isVuelidateAsyncVm'
-function makePendingAsyncVm (Vue, promise) {
+
+function makePendingAsyncVm(Vue, promise) {
   const asyncVm = new Vue({
     data: {
       p: true, // pending
@@ -52,12 +53,12 @@ function makePendingAsyncVm (Vue, promise) {
 }
 
 const validationGetters = {
-  $invalid () {
+  $invalid() {
     const proxy = this.proxy
     return this.nestedKeys.some(nested => proxy[nested].$invalid) ||
       this.ruleKeys.some(rule => !proxy[rule])
   },
-  $dirty () {
+  $dirty() {
     if (this.dirty) {
       return true
     }
@@ -70,24 +71,31 @@ const validationGetters = {
       return proxy[key].$dirty
     })
   },
-  $error () {
+  $error() {
     return this.$dirty && !this.$pending && this.$invalid
   },
-  $pending () {
+  $pending() {
     const proxy = this.proxy
     return this.nestedKeys.some(key => proxy[key].$pending) ||
       this.ruleKeys.some(key => this.getRef(key).$pending)
   },
-  $params () {
+  $params() {
     const vals = this.validations
     return {
       ...buildFromKeys(this.nestedKeys, key => vals[key] && vals[key].$params || null),
       ...buildFromKeys(this.ruleKeys, key => this.getRef(key).$params)
     }
-  }
+  },
+  $errors() {
+    if (!this.$error)
+      return [];
+    const {proxy, ruleKeys} = this;
+    const errors = ruleKeys.filter(key => !proxy[key]).map(key => this.getRef(key).$params.message);
+    return errors;
+  },
 }
 
-function setDirtyRecursive (newState) {
+function setDirtyRecursive(newState) {
   this.dirty = newState
   const proxy = this.proxy
   const method = newState ? '$touch' : '$reset'
@@ -97,13 +105,13 @@ function setDirtyRecursive (newState) {
 }
 
 const validationMethods = {
-  $touch () {
+  $touch() {
     setDirtyRecursive.call(this, true)
   },
-  $reset () {
+  $reset() {
     setDirtyRecursive.call(this, false)
   },
-  $flattenParams () {
+  $flattenParams() {
     const proxy = this.proxy
     let params = []
     for (const key in this.$params) {
@@ -132,16 +140,16 @@ const getComponent = (Vue) => {
   }
 
   const VBase = Vue.extend({
-    beforeCreate () {
+    beforeCreate() {
       this._vval = null
     },
-    beforeDestroy () {
+    beforeDestroy() {
       if (this._vval) {
         patchChildren(this._vval)
       }
     },
     computed: {
-      refs () {
+      refs() {
         const oldVval = this._vval
         this._vval = this.children
         patchChildren(oldVval, this._vval)
@@ -155,7 +163,7 @@ const getComponent = (Vue) => {
   })
 
   const ValidationRule = VBase.extend({
-    data () {
+    data() {
       return {
         rule: null,
         model: null,
@@ -164,27 +172,27 @@ const getComponent = (Vue) => {
       }
     },
     methods: {
-      runRule (parent) {
+      runRule(parent) {
         // Avoid using this.parentModel to not get dependent on it.
         // Passed as an argument for workaround
         pushParams()
         const rawOutput = this.rule.call(this.rootModel, this.model, parent)
-        const output = isPromise(rawOutput)
-          ? makePendingAsyncVm(Vue, rawOutput)
-          : rawOutput
+        const output = isPromise(rawOutput) ?
+          makePendingAsyncVm(Vue, rawOutput) :
+          rawOutput
 
         const rawParams = popParams()
-        const params = rawParams && rawParams.$sub
-          ? rawParams.$sub.length > 1
-            ? rawParams
-            : rawParams.$sub[0]
-          : null
+        const params = rawParams && rawParams.$sub ?
+          rawParams.$sub.length > 1 ?
+          rawParams :
+          rawParams.$sub[0] :
+          null
 
         return { output, params }
       }
     },
     computed: {
-      run () {
+      run() {
         const parent = this.parentModel
         const isArrayDependant =
           Array.isArray(parent) &&
@@ -216,17 +224,17 @@ const getComponent = (Vue) => {
 
         return this._indirectWatcher ? this._indirectWatcher.value : this.runRule(parent)
       },
-      $params () {
+      $params() {
         return this.run.params
       },
-      proxy () {
+      proxy() {
         const output = this.run.output
         if (output[__isVuelidateAsyncVm]) {
           return !!output.v
         }
         return !!output
       },
-      $pending () {
+      $pending() {
         const output = this.run.output
         if (output[__isVuelidateAsyncVm]) {
           return output.p
@@ -237,7 +245,7 @@ const getComponent = (Vue) => {
   })
 
   const Validation = VBase.extend({
-    data () {
+    data() {
       return {
         dirty: false,
         validations: null,
@@ -249,25 +257,25 @@ const getComponent = (Vue) => {
     },
     methods: {
       ...validationMethods,
-      getRef (key) {
+      getRef(key) {
         return this.refs[key]
       },
-      isNested (key) {
+      isNested(key) {
         return typeof this.validations[key] !== 'function'
       }
     },
     computed: {
       ...validationGetters,
-      nestedKeys () {
+      nestedKeys() {
         return this.keys.filter(this.isNested)
       },
-      ruleKeys () {
+      ruleKeys() {
         return this.keys.filter(k => !this.isNested(k))
       },
-      keys () {
+      keys() {
         return Object.keys(this.validations).filter(k => k !== '$params')
       },
-      proxy () {
+      proxy() {
         const keyDefs = buildFromKeys(this.keys, key => ({
           enumerable: true,
           configurable: false,
@@ -287,10 +295,12 @@ const getComponent = (Vue) => {
         }))
 
         return Object.defineProperties({}, {
-          ...keyDefs, ...getterDefs, ...methodDefs
+          ...keyDefs,
+          ...getterDefs,
+          ...methodDefs
         })
       },
-      children () {
+      children() {
         return [
           ...this.nestedKeys.map(key => renderNested(this, key)),
           ...this.ruleKeys.map(key => renderRule(this, key))
@@ -301,13 +311,13 @@ const getComponent = (Vue) => {
 
   const GroupValidation = Validation.extend({
     methods: {
-      isNested (key) {
+      isNested(key) {
         return typeof this.validations[key]() !== 'undefined'
       },
-      getRef (key) {
+      getRef(key) {
         const vm = this
         return {
-          get proxy () {
+          get proxy() {
             // default to invalid
             return vm.validations[key]() || false
           }
@@ -318,16 +328,16 @@ const getComponent = (Vue) => {
 
   const EachValidation = Validation.extend({
     computed: {
-      keys () {
+      keys() {
         return Object.keys(this.model)
       },
-      tracker () {
+      tracker() {
         const trackBy = this.validations.$trackBy
-        return trackBy
-            ? key => `${getPath(this.rootModel, this.model[key], trackBy)}`
-            : x => `${x}`
+        return trackBy ?
+          key => `${getPath(this.rootModel, this.model[key], trackBy)}` :
+          x => `${x}`
       },
-      children () {
+      children() {
         const def = this.validations
 
         const validations = { ...def }
@@ -352,10 +362,10 @@ const getComponent = (Vue) => {
       }
     },
     methods: {
-      isNested () {
+      isNested() {
         return true
       },
-      getRef (key) {
+      getRef(key) {
         return this.refs[this.tracker(key)]
       }
     }
@@ -376,7 +386,7 @@ const getComponent = (Vue) => {
       const root = vm.rootModel
       const refVals = buildFromKeys(
         validations,
-        path => function () { return getPath(root, root.$v, path) },
+        path => function() { return getPath(root, root.$v, path) },
         v => Array.isArray(v) ? v.join('.') : v
       )
       return h(GroupValidation, key, {
@@ -405,12 +415,13 @@ const getComponent = (Vue) => {
     })
   }
 
-  _cachedComponent = {VBase, Validation}
+  _cachedComponent = { VBase, Validation }
   return _cachedComponent
 }
 
 let _cachedVue = null
-function getVue (rootVm) {
+
+function getVue(rootVm) {
   if (_cachedVue) return _cachedVue
   let Vue = rootVm.constructor
   /* istanbul ignore next */
@@ -421,13 +432,13 @@ function getVue (rootVm) {
 
 const validateModel = (model, validations) => {
   const Vue = getVue(model)
-  const {Validation, VBase} = getComponent(Vue)
+  const { Validation, VBase } = getComponent(Vue)
   const root = new VBase({
     computed: {
-      children () {
-        const vals = typeof validations === 'function'
-          ? validations.call(model)
-          : validations
+      children() {
+        const vals = typeof validations === 'function' ?
+          validations.call(model) :
+          validations
 
         return [h(Validation, '$v', {
           validations: vals,
@@ -443,21 +454,21 @@ const validateModel = (model, validations) => {
 }
 
 const validationMixin = {
-  data () {
+  data() {
     const vals = this.$options.validations
     if (vals) {
       this._vuelidate = validateModel(this, vals)
     }
     return {}
   },
-  beforeCreate () {
+  beforeCreate() {
     const options = this.$options
     const vals = options.validations
     if (!vals) return
     if (!options.computed) options.computed = {}
     options.computed.$v = () => this._vuelidate.refs.$v.proxy
   },
-  beforeDestroy () {
+  beforeDestroy() {
     if (this._vuelidate) {
       this._vuelidate.$destroy()
       this._vuelidate = null
@@ -465,7 +476,7 @@ const validationMixin = {
   }
 }
 
-function Vuelidate (Vue) {
+function Vuelidate(Vue) {
   Vue.mixin(validationMixin)
 }
 

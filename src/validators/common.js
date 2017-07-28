@@ -8,11 +8,6 @@ export const req = value => {
     return false
   }
 
-  if (value instanceof Date) {
-    // invalid date won't pass
-    return !isNaN(value.getTime())
-  }
-
   if (typeof value === 'object') {
     for (let _ in value) return true
     return false
@@ -38,4 +33,4 @@ export const ref = (reference, vm, parentVm) =>
 
 // regex based validator template
 export const regex = (type, expr) =>
-  withParams({ type }, value => !req(value) || expr.test(value))
+  withParams(type, value => !req(value) || expr.test(value))

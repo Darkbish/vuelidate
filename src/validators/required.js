@@ -1,2 +1,2 @@
 import {withParams, req} from './common'
-export default withParams({type: 'required'}, req)
+export default (message = '这是必填字段') => withParams({type: 'required', message}, req)
